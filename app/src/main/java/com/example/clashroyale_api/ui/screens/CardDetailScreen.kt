@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
@@ -31,10 +34,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.clashroyale_api.model.Card as ClashCard
+import com.example.clashroyale_api.model.IconUrls
 import com.example.clashroyale_api.viewmodel.CardsViewModel
 
 @Composable
@@ -46,6 +52,17 @@ fun CardDetailScreen(
     val cards by viewModel.cards.collectAsState()
     val selectedCard = cards.find { it.id == cardId }
 
+    CardDetailContent(
+        selectedCard = selectedCard,
+        onBackClick = { navController.popBackStack() }
+    )
+}
+
+@Composable
+fun CardDetailContent(
+    selectedCard: ClashCard?,
+    onBackClick: () -> Unit
+) {
     if (selectedCard != null) {
         val backgroundGradient = when (selectedCard.rarity.lowercase()) {
             "common" -> listOf(Color(0xFF78909C), Color(0xFF37474F))
@@ -72,76 +89,120 @@ fun CardDetailScreen(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Botón seguro debajo de la barra de estado
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 24.dp, start = 8.dp),
+                        .systemBarsPadding(),
                     horizontalArrangement = Arrangement.Start
                 ) {
-                    TextButton(onClick = { navController.popBackStack() }) {
+                    TextButton(
+                        onClick = onBackClick,
+                    ) {
                         Text(
                             text = "◄ Volver",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.ExtraBold,
                             color = Color.White
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                //Spacer(modifier = Modifier.height(16.dp))
 
-                HorizontalPager(
-                    state = pagerState,
+                // CONTENEDOR PRINCIPAL: Separa el fondo luminoso del carrusel para evitar recortes cuadrados
+                // CONTENEDOR PRINCIPAL: Separa el fondo luminoso del carrusel para evitar recortes cuadrados
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(340.dp)
-                ) { page ->
-                    val (imageUrl, imageType) = imageList[page]
-
-                    // Configuramos los colores del aura asegurando que el borde sea completamente transparente
-                    val auraColors = when (imageType) {
+                        .offset(y = (-40).dp), // <--- 1. AQUÍ SUBIMOS TODO EL BLOQUE (Aura, Imagen y Texto)
+                    contentAlignment = Alignment.Center
+                ) {
+                    // 1. EL AURA RADIAL EN EL FONDO (Desvinculada del Pager)
+                    val currentImageType = imageList[pagerState.currentPage].second
+                    val auraColors = when (currentImageType) {
                         "evolution" -> listOf(
-                            Color(0xFFAB00C7).copy(alpha = 0.8f), // Magenta brillante en el centro
-                            Color(0xFF690179).copy(alpha = 0.3f), // Difuminado medio
-                            Color.Transparent                     // Transparencia total en el borde
+                            Color(0xFFE040FB).copy(alpha = 0.8f),
+                            Color(0xFFE040FB).copy(alpha = 0.3f),
+                            Color.Transparent
                         )
                         "hero" -> listOf(
-                            Color(0xFFFFEA00).copy(alpha = 0.8f), // Dorado vibrante en el centro
+                            Color(0xFFFFEA00).copy(alpha = 0.8f),
                             Color(0xFFFFEA00).copy(alpha = 0.3f),
                             Color.Transparent
                         )
                         else -> listOf(
-                            Color.Black.copy(alpha = 0.6f),       // Sombra oscura y suave para la carta normal
+                            Color.Black.copy(alpha = 0.6f),
                             Color.Black.copy(alpha = 0.2f),
                             Color.Transparent
                         )
                     }
 
                     Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        // 1. EL AURA: Un lienzo grande detrás de la carta pintado solo con luz difuminada
-                        Box(
-                            modifier = Modifier
-                                .size(400.dp) // Espacio suficiente para que la luz escape
-                                .background(Brush.radialGradient(colors = auraColors))
-                        )
+                        modifier = Modifier
+                            .requiredSize(550.dp)
+                            .clip(CircleShape)
+                            .background(Brush.radialGradient(colors = auraColors))
+                    )
 
-                        // 2. LA IMAGEN: Limpia, sin modificadores de sombra que arruinen los recortes del PNG
-                        AsyncImage(
-                            model = imageUrl,
-                            contentDescription = "Imagen de ${selectedCard.name}",
-                            modifier = Modifier.size(320.dp)
-                        )
+                    // 2. EL CARRUSEL DE IMÁGENES POR ENCIMA DE LA LUZ
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(420.dp)
+                    ) { page ->
+                        val (imageUrl, imageType) = imageList[page]
+
+                        val textoForma = when (imageType) {
+                            "evolution" -> "EVOLUTION"
+                            "hero" -> "HERO"
+                            else -> "COMMON"
+                        }
+
+                        val colorForma = when (imageType) {
+                            "evolution" -> Color(0xFFE040FB)
+                            "hero" -> Color(0xFFFFEA00)
+                            else -> Color.White
+                        }
+
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // LA IMAGEN LIMPIA
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = "Imagen de la carta",
+                                modifier = Modifier
+                                    .size(380.dp)
+                                    .padding(bottom = 20.dp) // <--- 2. AQUÍ restauramos el padding original (quitamos el offset individual)
+                            )
+
+                            // LA ETIQUETA DE TEXTO
+                            Text(
+                                text = textoForma,
+                                color = colorForma,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 12.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.Black.copy(alpha = 0.7f))
+                                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                            )
+                        }
                     }
                 }
 
+                // Indicadores del Carrusel (Puntitos)
                 if (imageList.size > 1) {
                     Row(
                         modifier = Modifier
                             .wrapContentHeight()
                             .fillMaxWidth()
+                            .offset(y = (-40).dp) // <--- 3. AQUÍ SUBIMOS LOS PUNTITOS para que sigan a la imagen
                             .padding(top = 16.dp),
                         horizontalArrangement = Arrangement.Center
                     ) {
@@ -160,7 +221,7 @@ fun CardDetailScreen(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                // Panel inferior de estadísticas (Se mantiene idéntico)
+                // Panel inferior de estadísticas
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -255,6 +316,31 @@ fun DetailStatBox(label: String, value: String, color: Color) {
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             color = Color.DarkGray
+        )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun CardDetailPreview() {
+    val dummyCard = ClashCard(
+        id = 26000000,
+        name = "Knight",
+        maxLevel = 14,
+        maxEvolutionLevel = 1,
+        elixirCost = 3,
+        rarity = "common",
+        iconUrls = IconUrls(
+            medium = "https://api-assets.clashroyale.com/cards/300/jAj1Q5rc1XxU9kVImGqSJxa4wEMfEhvwNQ_4jiGUuqg.png",
+            evolutionMedium = "https://api-assets.clashroyale.com/cardevolutions/300/jAj1Q5rc1XxU9kVImGqSJxa4wEMfEhvwNQ_4jiGUuqg.png",
+            heroMedium = null
+        )
+    )
+
+    MaterialTheme {
+        CardDetailContent(
+            selectedCard = dummyCard,
+            onBackClick = {}
         )
     }
 }

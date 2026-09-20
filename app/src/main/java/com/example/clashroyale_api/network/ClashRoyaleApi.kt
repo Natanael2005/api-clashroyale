@@ -9,6 +9,7 @@ package com.example.clashroyale_api.network
  */
 
 import com.example.clashroyale_api.model.CardsResponse
+import com.example.clashroyale_api.model.ClashEvent // Importamos el modelo que creamos
 import retrofit2.http.GET
 import retrofit2.http.Header
 
@@ -17,4 +18,9 @@ interface ClashRoyaleApi {
     suspend fun getCards(
         @Header("Authorization") token: String
     ): CardsResponse
+
+    @GET("v1/events")
+    suspend fun getEvents(
+        @Header("Authorization") token: String
+    ): List<ClashEvent>
 }
